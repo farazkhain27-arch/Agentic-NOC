@@ -39,7 +39,7 @@ docker push $ECR_FRONTEND:latest
 # ── 4. CDK Deploy ─────────────────────────────────────────────────────────────
 echo "[4/5] Deploying infrastructure with CDK..."
 cd infrastructure/cdk
-npm ci --silent
+npm install --silent
 npm run build
 npx cdk deploy --all --require-approval never --outputs-file ../../cdk-outputs.json
 cd ../..
