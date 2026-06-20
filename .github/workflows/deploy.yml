@@ -40,8 +40,12 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsDeployRole
-          aws-region: ${{ env.AWS_REGION }}
-          aws-sts-regional-endpoints: global
+          aws-region: us-east-1
+
+      - name: Set AWS region to target deployment region
+        run: |
+          echo "AWS_DEFAULT_REGION=me-south-1" >> $GITHUB_ENV
+          echo "AWS_REGION=me-south-1" >> $GITHUB_ENV
 
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
