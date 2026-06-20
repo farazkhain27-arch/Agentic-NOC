@@ -37,8 +37,8 @@ class NOCState(TypedDict):
 # ─── LLM ────────────────────────────────────────────────────────────────────────
 def get_llm():
     return ChatAnthropic(
-        model="claude-sonnet-4-6",
-        api_key=settings.anthropic_api_key,
+        model=settings.CLAUDE_MODEL,
+        api_key=settings.ANTHROPIC_API_KEY,
         max_tokens=2048,
         temperature=0.1,
     )
@@ -329,7 +329,7 @@ async def ticketing_agent(state: NOCState) -> NOCState:
     }
 
     # Simulate JIRA call (real integration via settings)
-    if settings.jira_api_token and settings.jira_base_url:
+    if settings.JIRA_API_TOKEN and settings.JIRA_BASE_URL:
         ticket["jira_integration"] = "enabled"
     else:
         ticket["jira_integration"] = "mock"
@@ -379,7 +379,7 @@ Next update in 30 minutes.
     notification = {
         "should_notify": should_notify,
         "severity": severity,
-        "recipients": settings.management_emails or ["management@example.com"],
+        "recipients": settings.EMAIL_MANAGEMENT.split(";") or ["management@example.com"],
         "subject": f"[{severity} ALARM] {alarm.get('alarm_code')} — {ne_info.get('name')} | {ticket.get('ticket_number')}",
         "body": email_body,
         "sent": False,
@@ -387,7 +387,7 @@ Next update in 30 minutes.
     }
 
     # Simulate SendGrid send
-    if should_notify and settings.sendgrid_api_key:
+    if should_notify and settings.SENDGRID_API_KEY:
         notification["sent"] = True
         notification["integration"] = "sendgrid"
     else:
