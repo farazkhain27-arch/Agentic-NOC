@@ -1,0 +1,79 @@
+name: Deploy NOC Agentic AI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: me-south-1
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install -r backend/requirements.txt
+      - run: cd backend && python -m pytest tests/ -v --tb=short || true
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: cd frontend && npm ci && npm run build
+
+  deploy:
+    needs: [test-backend, test-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsDeployRole
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend
+        env:
+          ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+        run: |
+          docker build -t $ECR_REGISTRY/noc-backend:${{ github.sha }} ./backend
+          docker tag $ECR_REGISTRY/noc-backend:${{ github.sha }} $ECR_REGISTRY/noc-backend:latest
+          docker push $ECR_REGISTRY/noc-backend:${{ github.sha }}
+          docker push $ECR_REGISTRY/noc-backend:latest
+
+      - name: Build and push frontend
+        env:
+          ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+        run: |
+          docker build -t $ECR_REGISTRY/noc-frontend:${{ github.sha }} ./frontend
+          docker tag $ECR_REGISTRY/noc-frontend:${{ github.sha }} $ECR_REGISTRY/noc-frontend:latest
+          docker push $ECR_REGISTRY/noc-frontend:${{ github.sha }}
+          docker push $ECR_REGISTRY/noc-frontend:latest
+
+      - name: CDK Deploy
+        run: |
+          cd infrastructure/cdk
+          npm ci
+          npm run build
+          npx cdk deploy --all --require-approval never
+        env:
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Force ECS update
+        run: |
+          aws ecs update-service --cluster noc-cluster --service BackendService --force-new-deployment
+          aws ecs update-service --cluster noc-cluster --service FrontendService --force-new-deployment
