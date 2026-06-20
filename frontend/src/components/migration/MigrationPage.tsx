@@ -31,7 +31,7 @@ export default function MigrationPage() {
     if (!approvedBy.trim()) return
     setActing(true)
     try {
-      const updated = await api.migration.approve(id, approved, approvedBy, notes)
+      const updated = (await api.migration.approve(id, approved, approvedBy, notes)) as MigrationRequest
       updateMigration(id, { status: updated.status, approved_by: updated.approved_by })
       if (selected?.id === id) setSelected({ ...selected, status: updated.status })
       setNotes('')

@@ -27,7 +27,7 @@ export default function MDTPage() {
   const approve = async (id: string, approved: boolean) => {
     setActing(true)
     try {
-      const updated = await api.mdt.approve(id, approved, approvedBy, notes)
+      const updated = (await api.mdt.approve(id, approved, approvedBy, notes)) as MDTRequest
       updateMdt(id, { status: updated.status, approved_by: updated.approved_by })
       if (selected?.id === id) setSelected({ ...selected, status: updated.status })
       setNotes('')
@@ -37,7 +37,7 @@ export default function MDTPage() {
   const complete = async (id: string) => {
     setActing(true)
     try {
-      const updated = await api.mdt.complete(id)
+      await api.mdt.complete(id)
       updateMdt(id, { status: 'COMPLETED' })
       if (selected?.id === id) setSelected({ ...selected, status: 'COMPLETED' })
     } finally { setActing(false) }
@@ -47,7 +47,7 @@ export default function MDTPage() {
     if (!form.node_name || !form.reason) return
     setActing(true)
     try {
-      const created = await api.mdt.create(form)
+      const created = (await api.mdt.create(form)) as MDTRequest
       setMdts([created, ...mdts])
       setShowCreate(false)
       setForm({ node_name: '', shelf: '', slot: '', reason: '', scheduled_start: '', scheduled_end: '', requested_by: 'NOC Engineer' })
